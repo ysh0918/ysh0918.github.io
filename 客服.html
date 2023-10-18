@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>悬浮的问答客服系统</title>
+<style>
+  #chatContainer {
+    position: fixed;
+    bottom: 10px;
+    right: 10px;
+    width: 300px;
+    background-color: #f9f9f9;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+  }
+  #chatBox {
+    height: 200px;
+    overflow-y: scroll;
+    padding: 10px;
+    border-bottom: 1px solid #ccc;
+  }
+  #inputBox {
+    width: calc(100% - 20px);
+    padding: 10px;
+    border: none;
+    outline: none;
+  }
+</style>
+</head>
+<body>
+
+<div id="chatContainer">
+  <div id="chatBox"></div>
+  <input type="text" id="inputBox" onkeypress="handleKeyPress(event)">
+</div>
+
+<script>
+  function handleKeyPress(event) {
+    if(event.keyCode == 13) {  // Enter key
+      sendQuestion();
+    }
+  }
+
+  function sendQuestion() {
+    var inputBox = document.getElementById('inputBox');
+    var chatBox = document.getElementById('chatBox');
+    var userQuestion = inputBox.value;
+    inputBox.value = '';  // clear the input box
+
+    // Display user's question
+    chatBox.innerHTML += 'User: ' + userQuestion + '<br>';
+
+    // Simple keyword-based response logic
+    var response;
+    if(userQuestion.toLowerCase().includes('price')) {
+      response = '我们的产品价格在100到500美元之间。';
+    } else {
+      response = '对不起，我不明白你的问题。';
+    }
+
+    // Display the response
+    chatBox.innerHTML += 'Customer Service: ' + response + '<br>';
+    // Automatically scroll chat to the bottom
+    chatBox.scrollTop = chatBox.scrollHeight;
+  }
+</script>
+
+</body>
+</html>
