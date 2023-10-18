@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title> 注射紀錄系統</title>
+    <style>
+        canvas {
+            border: 1px solid black;
+            display: block;
+            touch-action: none;
+        }
+
+        #tools, #querySection {
+            margin-top: 10px;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>注射紀錄系統</h1>
+
+
+
+        <ul id="recordList"></ul>
+
+    <canvas id="drawingCanvas"></canvas>
+    <div id="tools">
+        <label>筆的顏色:</label>
+        <input type="color" id="colorPicker" value="#000000">
+
+<br>
+<br>
+<br>
+
+       <label>筆的粗細調整:</label>
+       <input type="range" id="brushSize" min="1" max="50" value="5">
+
+
+<br>
+<br>
+<br>
+
+        <button onclick="undo()">回復上一步</button>
+
+<br>
+<br>
+<br>
+        <button onclick="enableEraser()">橡皮擦</button>
+
+        <label>橡皮擦大小:</label>
+        <input type="range" id="eraserSize" min="1" max="50" value="5">
+<br>
+<br>
+        <button onclick="disableEraser()">畫筆</button>
+<br>
+<br>
+<br>
+
+        <label>上傳圖像:</label>
+        <input type="file" id="imageInput">
+        <button onclick="uploadImage()">加入圖像</button>
+<br>
+<br>
+        <button onclick="removeUploadedImage()">刪除上傳的圖像</button>
+<br>
+<br>
+        <label>儲存到日期:</label>
+        <input type="date" id="saveDate">
+        <button onclick="saveEditedDrawing()">儲存注射紀錄</button>
+
+<br>
+<br>
+        <label>輸入病歷號:</label>
+        <input type="text" id="queryCaseNumber">
+        <button onclick="fetchRecordsByCaseNumber()">加載已前的注射紀錄</button>
+<br>
+<br>
+<br>
+      
+
+
+    </div>
+
+
+
+<input type="hidden" id="currentQueryDate">
+
+
+
+
+
+
+
+
+
+    <script>
+        // ...你之前的script內容...
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        const canvas = document.getElementById('drawingCanvas');
+
+
+
+
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight - 600; // 或其他適當的值
+
+
+
+
+
+
+
+        const ctx = canvas.getContext('2d');
+        let isDrawing = false;
+        let currentColor = "#000000";
+        let eraserSize = 5;
+        let uploadedImage = null;
+        let uploadedImageInfo = {
+            x: 0,
+            y: 0,
+            width: 200,
+            height: 200,
+            dragging: false,
+            scale: 1,
+        };
+        const undoStack = [];
+
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight - 500;
+
+
+
+let brushSize = 5;
+
+document.getElementById('brushSize').addEventListener('input', (event) => {
+    brushSize = event.target.value;
+});
+
+
+
+
+
+
+        function saveState() {
+            undoStack.push(canvas.toDataURL());
+        }
+
+        function undo() {
+            if (undoStack.length > 0) {
+                const lastState = undoStack.pop();
+                const img = new Image();
+                img.src = lastState;
+                img.onload = function () {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    ctx.drawImage(img, 0, 0);
+                };
+            }
+        }
+
+        function removeUploadedImage() {
+            uploadedImage = null;
+            redrawCanvas();
+        }
+
+        function redrawCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            if (uploadedImage) {
+                ctx.drawImage(uploadedImage, uploadedImageInfo.x, uploadedImageInfo.y, uploadedImageInfo.width, uploadedImageInfo.height);
+            }
+        }
+
+        document.getElementById('colorPicker').addEventListener('change', (event) => {
+            currentColor = event.target.value;
+        });
+
+        document.getElementById('eraserSize').addEventListener('input', (event) => {
+            eraserSize = event.target.value;
+        });
+
+        function startDrawing(event) {
+            saveState();
+            isDrawing = true;
+            draw(event);
+        }
+
+let lastPoint = null;
+
+function draw(event) {
+    const rect = canvas.getBoundingClientRect();
+    let x = (event.clientX - rect.left) || (event.touches && event.touches[0] && event.touches[0].clientX - rect.left);
+    let y = (event.clientY - rect.top) || (event.touches && event.touches[0] && event.touches[0].clientY - rect.top);
+    
+    if (!isDrawing) return;
+    
+    ctx.lineWidth = currentColor === "#FFFFFF" ? eraserSize : brushSize; // 修改此行以应用brushSize
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = currentColor;
+
+    if (lastPoint) {
+        ctx.beginPath();
+        ctx.moveTo(lastPoint.x, lastPoint.y);
+        ctx.lineTo(x, y);
+        ctx.stroke();
+    }
+    
+    lastPoint = {x: x, y: y};
+}
+
+
+
+
+
+function startDrawing(event) {
+    saveState();
+    isDrawing = true;
+    lastPoint = null;
+    draw(event);
+}
+
+
+
+
+
+
+
+        function enableEraser() {
+            currentColor = "#FFFFFF";
+        }
+
+        function disableEraser() {
+            currentColor = document.getElementById('colorPicker').value;
+        }
+
+        function uploadImage() {
+    const imageInput = document.getElementById('imageInput');
+    uploadedImage = new Image();
+    uploadedImage.src = URL.createObjectURL(imageInput.files[0]);
+    uploadedImage.onload = function () {
+        uploadedImageInfo.originalWidth = uploadedImage.width;
+        uploadedImageInfo.originalHeight = uploadedImage.height;
+        uploadedImageInfo.width = uploadedImage.width;
+        uploadedImageInfo.height = uploadedImage.height;
+        uploadedImageInfo.scale = 1;  // 重置scale为1
+        redrawCanvas();
+    };
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        canvas.addEventListener('mousedown', function(event) {
+            if (uploadedImage) {
+                const x = event.clientX - canvas.offsetLeft;
+                const y = event.clientY - canvas.offsetTop;
+
+                if (x > uploadedImageInfo.x && x < uploadedImageInfo.x + uploadedImageInfo.width &&
+                    y > uploadedImageInfo.y && y < uploadedImageInfo.y + uploadedImageInfo.height) {
+                    uploadedImageInfo.dragging = true;
+                }
+            }
+            startDrawing(event);
+        });
+
+        canvas.addEventListener('mousemove', function(event) {
+            const x = event.clientX - canvas.offsetLeft;
+            const y = event.clientY - canvas.offsetTop;
+
+            if (uploadedImageInfo.dragging) {
+                uploadedImageInfo.x = x - uploadedImageInfo.width / 2;
+                uploadedImageInfo.y = y - uploadedImageInfo.height / 2;
+                redrawCanvas();
+            }
+            draw(event);
+        });
+
+        canvas.addEventListener('mouseup', function() {
+            uploadedImageInfo.dragging = false;
+            stopDrawing();
+        });
+
+
+canvas.addEventListener('wheel', function(event) {
+    if (uploadedImage) {
+        if (event.deltaY < 0) {
+            uploadedImageInfo.scale += 0.1;
+        } else {
+            uploadedImageInfo.scale -= 0.1;
+        }
+        // 使用累積的 scale 去乘以圖片的原始大小
+        uploadedImageInfo.width = uploadedImageInfo.originalWidth * uploadedImageInfo.scale;
+        uploadedImageInfo.height = uploadedImageInfo.originalHeight * uploadedImageInfo.scale;
+        redrawCanvas();
+    }
+    event.preventDefault();
+});
+
+
+
+        function stopDrawing() {
+            isDrawing = false;
+            ctx.beginPath();
+        }
+
+   // ... 其他部分不變 ...
+
+canvas.addEventListener('touchstart', function(event) {
+    if (event.touches.length === 1) {
+        startDrawing(event);
+    } else if (event.touches.length === 2 && uploadedImage) {
+        initialPoints = {
+            x1: event.touches[0].clientX,
+            y1: event.touches[0].clientY,
+            x2: event.touches[1].clientX,
+            y2: event.touches[1].clientY
+        };
+        initialDistance = Math.sqrt(Math.pow(initialPoints.x2 - initialPoints.x1, 2) + Math.pow(initialPoints.y2 - initialPoints.y1, 2));
+    }
+});
+
+canvas.addEventListener('touchmove', function(event) {
+    if (event.touches.length === 1) {
+        draw(event);
+    } else if (event.touches.length === 2 && uploadedImage && initialDistance) {
+        event.preventDefault(); // 防止默認行為
+
+        const currentPoints = {
+            x1: event.touches[0].clientX,
+            y1: event.touches[0].clientY,
+            x2: event.touches[1].clientX,
+            y2: event.touches[1].clientY
+        };
+
+        const initialCenter = {
+            x: (initialPoints.x1 + initialPoints.x2) / 2,
+            y: (initialPoints.y1 + initialPoints.y2) / 2
+        };
+
+        const currentCenter = {
+            x: (currentPoints.x1 + currentPoints.x2) / 2,
+            y: (currentPoints.y1 + currentPoints.y2) / 2
+        };
+
+        const currentDistance = Math.sqrt(Math.pow(currentPoints.x2 - currentPoints.x1, 2) + Math.pow(currentPoints.y2 - currentPoints.y1, 2));
+        
+        const scale = currentDistance / initialDistance;
+
+        uploadedImageInfo.width *= scale;
+        uploadedImageInfo.height *= scale;
+
+        uploadedImageInfo.x += currentCenter.x - initialCenter.x;
+        uploadedImageInfo.y += currentCenter.y - initialCenter.y;
+
+        initialPoints = currentPoints;
+        initialDistance = currentDistance;
+
+        redrawCanvas();
+    }
+});
+
+
+
+canvas.addEventListener('touchend', function(event) {
+    if (event.touches.length === 1) {
+        stopDrawing();
+    } else if (event.touches.length === 2 && uploadedImage) {
+        uploadedImageInfo.dragging = false;
+    }
+});
+
+
+
+
+
+
+
+
+
+
+
+  
+
+     
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    function fetchRecordsByCaseNumber() {
+        const caseNumber = document.getElementById('queryCaseNumber').value;
+
+        fetch(`/getRecordsByPartialCaseNumber?partialCaseNumber=${caseNumber}`)
+            .then(response => response.json())
+            .then(displayRecords)
+            .catch(error => console.log(error));
+    }
+
+
+
+
+
+
+
+function displayRecords(records) {
+    const recordList = document.getElementById('recordList');
+    recordList.innerHTML = '';
+    records.forEach(record => {
+        const listItem = document.createElement('li');
+        listItem.textContent = `病歷號：${record.caseNumber}`;
+        listItem.addEventListener('click', () => loadEditedDrawing(record.caseNumber)); // 这里传递record.caseNumber
+        recordList.appendChild(listItem);
+    });
+}
+
+
+
+
+
+
+
+
+
+function loadEditedDrawing(caseNumber){
+  
+    fetch(`/getEditedDrawing?caseNumber=${caseNumber}`)
+    .then(response => response.json())
+    .then(data => {
+        const img = new Image();
+       img.src = "data:image/png;base64," + data.image;
+
+        img.onload = function () {
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        };
+    })
+    .catch(error => console.log('There was a problem with the fetch operation:', error.message));
+}
+
+
+
+
+
+
+
+
+function saveEditedDrawing() {
+    const drawingData = canvas.toDataURL("image/png").replace("data:image/png;base64,", "");
+    const caseNumber = document.getElementById('queryCaseNumber').value;
+    const saveDate = document.getElementById('currentQueryDate').value || document.getElementById('saveDate').value;
+
+    fetch("/uploadEdited", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            image: drawingData,
+            caseNumber: caseNumber,
+            date: saveDate
+        })
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.text();
+    })
+    .then(data => alert('Edited drawing saved successfully!'))
+    .catch(error => console.log('There was a problem with the fetch operation:', error.message));
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    </script>
+</body>
+
+</html>
+
+
+
+
+
+
